@@ -1,0 +1,1536 @@
+---
+title: "Modeling"
+output: 
+  pdf_document:
+      #code_folding: hide
+author: "Ross Dahlke"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+library(tidyverse)
+library(nlme)
+options(scipen = 999999)
+```
+
+```{r}
+tweets_md <- read_rds("../data/tweets_md.rds") %>% 
+  ungroup() %>% 
+  filter(!is.na(gender) & gender != "NULL") %>% 
+  mutate(female = if_else(gender == "F", 1, 0))
+```
+
+```{r}
+tweets_bernie_model <- tweets_md %>% 
+  filter(model == "bernie")
+
+tweets_trump_model <- tweets_md %>% 
+  filter(model == "trump")
+```
+
+## Notation
+
+$$Y_{it} = \beta_{0i} + \beta_{1i}DaysToDefeat_{it} + \beta_{2i}DefeatBinary_{it} + \beta_{3i}DaysSinceDefeat_{it} + \epsilon_{it}$$
+
+### Model 1
+
+$$\beta_{0i} = (\gamma_{00} + u_{00i}) + (\gamma_{01})*loser_{i}$$
+$$\beta_{1i} = (\gamma_{10}) + (\gamma_{11})*loser_{i}$$
+$$\beta_{2i} = (\gamma_{20}) + (\gamma_{21})*loser_{i}$$
+$$\beta_{3i} = (\gamma_{30}) + (\gamma_{31})*loser_{i}$$
+
+### Model 2
+
+$$\beta_{0i} = (\gamma_{00} + u_{00i}) + (\gamma_{01})*loser_{i} + (\gamma_{02})*female_{i} + (\gamma_{03})*loser_{i}*female_{i}$$
+$$\beta_{1i} = (\gamma_{10}) + (\gamma_{11})*loser_{i} + (\gamma_{12})*female_{i} + (\gamma_{13})*loser_{i}*female_{i}$$
+$$\beta_{2i} = (\gamma_{20}) + (\gamma_{21})*loser_{i} + (\gamma_{22})*female_{i} + (\gamma_{23})*loser_{i}*female_{i}$$
+$$\beta_{3i} = (\gamma_{30}) + (\gamma_{31})*loser_{i} + (\gamma_{32})*female_{i} + (\gamma_{33})*loser_{i}*female_{i}$$
+
+### Model 3
+
+$$\beta_{0i} = (\gamma_{00} + u_{00i}) + (\gamma_{01})*loser_{i} + (\gamma_{02})*female_{i} + (\gamma_{03})*loser_{i}*female_{i} + (\gamma_{04})*identity_{i} + $$
+$$(\gamma_{05})*identity_{i}*loser_{i} + (\gamma_{06})*female_{i}*loser_{i} + (\gamma_{07})*identity_{i}*loser_{i}*female_{i}$$
+$$\beta_{1i} = (\gamma_{10}) + (\gamma_{11})*loser_{i} + (\gamma_{12})*female_{i} + (\gamma_{13})*loser_{i}*female_{i} + (\gamma_{14})*identity_{i} + $$
+$$(\gamma_{15})*identity_{i}*loser_{i} + (\gamma_{16})*female_{i}*loser_{i} + (\gamma_{17})*identity_{i}*loser_{i}*female_{i}$$
+$$\beta_{2i} = (\gamma_{20}) + (\gamma_{21})*loser_{i} + (\gamma_{22})*female_{i} + (\gamma_{23})*loser_{i}*female_{i} + (\gamma_{24})*identity_{i} + $$
+$$(\gamma_{25})*identity_{i}*loser_{i} + (\gamma_{26})*female_{i}*loser_{i} + (\gamma_{27})*identity_{i}*loser_{i}*female_{i}$$
+$$\beta_{3i} = (\gamma_{30}) + (\gamma_{31})*loser_{i} + (\gamma_{32})*female_{i} + (\gamma_{33})*loser_{i}*female_{i} + (\gamma_{34})*identity_{i} + $$
+$$(\gamma_{35})*identity_{i}*loser_{i} + (\gamma_{36})*female_{i}*loser_{i} + (\gamma_{37})*identity_{i}*loser_{i}*female_{i}$$
+
+# Number of Tweets
+
+```{r}
+load("../models/cons_volume_1")
+load("../models/cons_volume_2")
+load("../models/cons_volume_3")
+load("../models/libs_volume_1")
+load("../models/libs_volume_2")
+load("../models/libs_volume_3")
+```
+
+
+```{r}
+cons_volume_1_table <- cons_volume_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(cons_volume_1_estimate = estimate, 
+         cons_volume_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$"))
+
+cons_volume_2_table <- cons_volume_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(cons_volume_2_estimate = estimate, 
+         cons_volume_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$"))
+
+cons_volume_3_table <- cons_volume_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(cons_volume_3_estimate = estimate, 
+         cons_volume_3_ci = ci)%>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+
+libs_volume_1_table <- libs_volume_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(libs_volume_1_estimate = estimate, 
+         libs_volume_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$"))
+
+libs_volume_2_table <- libs_volume_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(libs_volume_2_estimate = estimate, 
+         libs_volume_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$"))
+
+libs_volume_3_table <- libs_volume_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.2f", round(lower, 2)), ", ",sprintf("%.2f", round(upper, 2)), "]")) %>% 
+  select(libs_volume_3_estimate = estimate, 
+         libs_volume_3_ci = ci) %>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+```
+
+```{r}
+rand_effects <- tribble(~term, ~cons_volume_1_estimate, ~cons_volume_1_ci, ~cons_volume_2_estimate, ~cons_volume_2_ci, ~cons_volume_3_estimate, ~cons_volume_3_ci, ~libs_volume_1_estimate, ~libs_volume_1_ci, ~libs_volume_2_estimate, ~libs_volume_2_ci, ~libs_volume_3_estimate, ~libs_volume_3_ci,
+        "$std(u_{00i})$", "76.6", "[68.3, 85.9]", "73.5", "[65.6, 82.4]", "72.7", "[64.7, 81.5]",
+                          "35.3", "[31.9, 39.0]", "35.1", "[31.7, 38.8]", "34.7", "[31.3, 38.4]",)
+```
+
+```{r}
+libs_volume_3 %>% intervals()
+```
+
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_volume_1_table) %>% 
+  left_join(cons_volume_2_table) %>% 
+  left_join(cons_volume_3_table) %>% 
+  left_join(libs_volume_1_table) %>% 
+  left_join(libs_volume_2_table) %>% 
+  left_join(libs_volume_3_table) %>% 
+  bind_rows(rand_effects) %>% 
+  mutate_all(replace_na, "") %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Random Effects", 33, 33) %>%
+  kableExtra::add_header_above(c(" " = 1, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2)) %>% 
+  kableExtra::add_header_above(c(" " = 1, "Conservative" = 6, "Liberal" = 6)) 
+```
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$")) %>%
+  left_join(cons_volume_1_table) %>% 
+  left_join(libs_volume_1_table) %>% 
+  bind_rows(rand_effects %>% select(term, cons_volume_1_estimate, cons_volume_1_ci, libs_volume_1_estimate, libs_volume_1_ci)) %>% 
+  mutate_all(replace_na, "") %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 8) %>%
+  kableExtra::pack_rows("Intercept (Baseline on Day of Defeat)", 1, 2, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysToDefeat (Gradual Leading up to Day of Defeat)", 3, 4, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DefeatBinary (Transformational Startinging on Day of Defeat)", 5, 6, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysSinceDefeat (Gradual Starting on Day of Defeat)", 7, 8, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("Random Effects", 9, 9) 
+```
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$")) %>%
+  left_join(cons_volume_2_table) %>% 
+  left_join(libs_volume_2_table) %>% 
+  bind_rows(rand_effects %>% select(term, cons_volume_2_estimate, cons_volume_2_ci, libs_volume_2_estimate, libs_volume_2_ci)) %>% 
+  mutate_all(replace_na, "") %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 16) %>%
+  kableExtra::pack_rows("Intercept (Baseline on Day of Defeat)", 1, 4, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysToDefeat (Gradual Leading up to Day of Defeat)", 5, 8, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DefeatBinary (Transformational Startinging on Day of Defeat)", 9, 12, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysSinceDefeat (Gradual Starting on Day of Defeat)", 13, 16, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("Random Effects", 17, 17) 
+```
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_volume_3_table) %>% 
+  left_join(libs_volume_3_table) %>% 
+  bind_rows(rand_effects %>% select(term, cons_volume_3_estimate, cons_volume_3_ci, libs_volume_3_estimate, libs_volume_3_ci)) %>% 
+  mutate_all(replace_na, "") %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Intercept (Baseline on Day of Defeat)", 1, 8, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysToDefeat (Gradual Leading up to Day of Defeat)", 9, 16, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DefeatBinary (Transformational Startinging on Day of Defeat)", 17, 24, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysSinceDefeat (Gradual Starting on Day of Defeat)", 25, 32, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("Random Effects", 33, 33) 
+```
+
+```{r}
+tweets_bernie_model_predicted <- tweets_bernie_model %>% 
+  cbind(pred = predict(libs_volume_2)) %>% 
+  cbind(proto = predict(libs_volume_2, level = 0)) %>% 
+  mutate(model = "Liberals") 
+
+tweets_trump_model_predicted <- tweets_trump_model %>% 
+  cbind(pred = predict(cons_volume_2)) %>% 
+  cbind(proto = predict(cons_volume_2, level = 0)) %>% 
+  mutate(model = "Conservatives") 
+```
+
+```{r fig.width = 8, fig.height = 5}
+tweets_bernie_model_predicted %>%
+  rbind(tweets_trump_model_predicted) %>% 
+  ggplot(aes(day_number, pred)) +
+  geom_line(aes(group = screen_name, color = as.character(loser), linetype = as.factor(female)), alpha = .1) +
+  geom_vline(aes(xintercept = -.5), linetype = "dotted", color = "black", size = 1) +
+  geom_line(aes(y = proto, color = as.character(loser), linetype = as.factor(female)), size = 2) + 
+  scale_y_continuous(breaks = seq(0, 200, 25)) +
+  coord_cartesian(ylim = c(0, 200)) +
+  scale_x_continuous(breaks = seq(-30, 30, 10)) +
+  scale_color_manual(values = c("#440154FF", "#29A387FF")) +
+  labs(x = "days to/from moment of defeat",
+       y = "number of tweets",
+       title = "Model of tweets per day",
+       subtitle = "big lines = prototypical supporter, small lines = individual predicted",
+       color = "supporter of losing candidate",
+       linetype = "female") +
+  theme_classic() +
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank()) +
+  facet_wrap(.~model)
+```
+
+# Candidate Interaction
+
+```{r}
+load("../models/cons_candidate_1")
+load("../models/cons_candidate_2")
+load("../models/cons_candidate_3")
+load("../models/libs_candidate_1")
+load("../models/libs_candidate_2")
+load("../models/libs_candidate_3")
+```
+
+
+```{r}
+cons_candidate_1_table <- cons_candidate_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_candidate_1_estimate = estimate, 
+         cons_candidate_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+cons_candidate_2_table <- cons_candidate_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_candidate_2_estimate = estimate, 
+         cons_candidate_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+cons_candidate_3_table <- cons_candidate_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_candidate_3_estimate = estimate, 
+         cons_candidate_3_ci = ci)%>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+
+libs_candidate_1_table <- libs_candidate_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_candidate_1_estimate = estimate, 
+         libs_candidate_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+libs_candidate_2_table <- libs_candidate_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_candidate_2_estimate = estimate, 
+         libs_candidate_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+libs_candidate_3_table <- libs_candidate_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_candidate_3_estimate = estimate, 
+         libs_candidate_3_ci = ci) %>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+```
+
+```{r}
+rand_effects <- tribble(~term, ~cons_candidate_1_estimate, ~cons_candidate_1_ci, ~cons_candidate_2_estimate, ~cons_candidate_2_ci, ~cons_candidate_3_estimate, ~cons_candidate_3_ci, ~libs_candidate_1_estimate, ~libs_candidate_1_ci, ~libs_candidate_2_estimate, ~libs_candidate_2_ci, ~libs_candidate_3_estimate, ~libs_candidate_3_ci,
+        "$std(u_{00i})$", "0.091", "[0.080, 0.103]", "0.091", "[0.080, 0.103]", "0.090", "[0.079, 0.109]",
+                          "0.039", "[0.035, 0.044]", "0.039", "[0.034, 0.044]", "0.038", "[0.034, 0.043]",)
+```
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_candidate_1_table) %>% 
+  left_join(cons_candidate_2_table) %>% 
+  left_join(cons_candidate_3_table) %>% 
+  left_join(libs_candidate_1_table) %>% 
+  left_join(libs_candidate_2_table) %>% 
+  left_join(libs_candidate_3_table) %>% 
+  mutate_all(replace_na, "") %>% 
+  bind_rows(rand_effects) %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Random Effects", 33, 33) %>%
+  kableExtra::add_header_above(c(" " = 1, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2)) %>% 
+  kableExtra::add_header_above(c(" " = 1, "Conservative" = 6, "Liberal" = 6)) 
+```
+
+```{r}
+tweets_bernie_model_predicted <- tweets_bernie_model %>% 
+  filter(!is.na(candidate_rt_per)) %>% 
+  cbind(pred = predict(libs_candidate_2)) %>% 
+  cbind(proto = predict(libs_candidate_2, level = 0)) %>% 
+  mutate(model = "Liberals") 
+
+tweets_trump_model_predicted <- tweets_trump_model %>% 
+  filter(!is.na(candidate_rt_per)) %>% 
+  cbind(pred = predict(cons_candidate_2)) %>% 
+  cbind(proto = predict(cons_candidate_2, level = 0)) %>% 
+  mutate(model = "Conservatives") 
+```
+
+```{r fig.width = 8, fig.height = 5}
+tweets_bernie_model_predicted %>%
+  rbind(tweets_trump_model_predicted) %>% 
+  ggplot(aes(day_number, pred)) +
+  geom_line(aes(group = screen_name, color = as.character(loser), linetype = as.factor(female)), alpha = .1) +
+  geom_vline(aes(xintercept = -.5), linetype = "dotted", color = "black", size = 1) +
+  geom_line(aes(y = proto, color = as.character(loser), linetype = as.factor(female)), size = 2) + 
+  scale_y_continuous(breaks = seq(0, .2, .05), labels = scales::percent_format()) +
+  coord_cartesian(ylim = c(0, .2)) +
+  scale_x_continuous(breaks = seq(-30, 30, 10)) +
+  scale_color_manual(values = c("#440154FF", "#29A387FF")) +
+  labs(x = "days to/from moment of defeat",
+       y = "percentage of tweets",
+       title = "Model of percentage tweets per day about the candidate",
+       subtitle = "big lines = prototypical supporter, small lines = individual predicted",
+       color = "supporter of losing candidate",
+       linetype = "female") +
+  theme_classic() +
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank()) +
+  facet_wrap(.~model)
+```
+
+# Flock Amplification
+
+```{r}
+load("../models/cons_flock_1")
+load("../models/cons_flock_2")
+load("../models/cons_flock_3")
+load("../models/libs_flock_1")
+load("../models/libs_flock_2")
+load("../models/libs_flock_3")
+```
+
+
+```{r}
+cons_flock_1_table <- cons_flock_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_flock_1_estimate = estimate, 
+         cons_flock_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+cons_flock_2_table <- cons_flock_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_flock_2_estimate = estimate, 
+         cons_flock_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+cons_flock_3_table <- cons_flock_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_flock_3_estimate = estimate, 
+         cons_flock_3_ci = ci)%>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+
+libs_flock_1_table <- libs_flock_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_flock_1_estimate = estimate, 
+         libs_flock_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+libs_flock_2_table <- libs_flock_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_flock_2_estimate = estimate, 
+         libs_flock_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+libs_flock_3_table <- libs_flock_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_flock_3_estimate = estimate, 
+         libs_flock_3_ci = ci) %>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+```
+
+```{r}
+rand_effects <- tribble(~term, ~cons_flock_1_estimate, ~cons_flock_1_ci, ~cons_flock_2_estimate, ~cons_flock_2_ci, ~cons_flock_3_estimate, ~cons_flock_3_ci, ~libs_flock_1_estimate, ~libs_flock_1_ci, ~libs_flock_2_estimate, ~libs_flock_2_ci, ~libs_flock_3_estimate, ~libs_flock_3_ci,
+        "$std(u_{00i})$", "0.077", "[.069, .087]", "0.077", "[.069, .087]", "0.075", "[.067, .085]",
+                          "0.083", "[.075, .093]", "0.083", "[.075, .093]", "0.083", "[.075, .092]")
+```
+
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_flock_1_table) %>% 
+  left_join(cons_flock_2_table) %>% 
+  left_join(cons_flock_3_table) %>% 
+  left_join(libs_flock_1_table) %>% 
+  left_join(libs_flock_2_table) %>% 
+  left_join(libs_flock_3_table) %>% 
+  mutate_all(replace_na, "") %>% 
+  bind_rows(rand_effects) %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Random Effects", 33, 33) %>%
+  kableExtra::add_header_above(c(" " = 1, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2)) %>% 
+  kableExtra::add_header_above(c(" " = 1, "Conservative" = 6, "Liberal" = 6)) 
+```
+
+```{r}
+tweets_bernie_model_predicted <- tweets_bernie_model %>% 
+  filter(!is.na(candidate_rt_per)) %>% 
+  cbind(pred = predict(libs_flock_2)) %>% 
+  cbind(proto = predict(libs_flock_2, level = 0)) %>% 
+  mutate(model = "Liberals") 
+
+tweets_trump_model_predicted <- tweets_trump_model %>% 
+  filter(!is.na(candidate_rt_per)) %>% 
+  cbind(pred = predict(cons_flock_2)) %>% 
+  cbind(proto = predict(cons_flock_2, level = 0)) %>% 
+  mutate(model = "Conservatives") 
+```
+
+```{r fig.width = 8, fig.height = 5}
+tweets_bernie_model_predicted %>%
+  rbind(tweets_trump_model_predicted) %>% 
+  ggplot(aes(day_number, pred)) +
+  geom_line(aes(group = screen_name, color = as.character(loser), linetype = as.factor(female)), alpha = .1) +
+  geom_vline(aes(xintercept = -.5), linetype = "dotted", color = "black", size = 1) +
+  geom_line(aes(y = proto, color = as.character(loser), linetype = as.factor(female)), size = 2) + 
+  scale_y_continuous(breaks = seq(0, .2, .05), labels = scales::percent_format()) +
+  coord_cartesian(ylim = c(0, .2)) +
+  scale_x_continuous(breaks = seq(-30, 30, 10)) +
+  scale_color_manual(values = c("#440154FF", "#29A387FF")) +
+  labs(x = "days to/from moment of defeat",
+       y = "percentage of tweets",
+       title = "Model of percentage tweets per day amplifying community members",
+       subtitle = "big lines = prototypical supporter, small lines = individual predicted",
+       color = "supporter of losing candidate",
+       linetype = "female") +
+  theme_classic() +
+  theme(legend.position = "bottom", 
+        panel.grid = element_blank()) +
+  facet_wrap(.~model)
+```
+
+# Populist language
+
+```{r}
+load("../models/cons_populism_1")
+load("../models/cons_populism_2")
+load("../models/cons_populism_3")
+load("../models/libs_populism_1")
+load("../models/libs_populism_2")
+load("../models/libs_populism_3")
+```
+
+
+```{r}
+cons_populism_1_table <- cons_populism_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.2f", round(est, 2)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_populism_1_estimate = estimate, 
+         cons_populism_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+cons_populism_2_table <- cons_populism_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_populism_2_estimate = estimate, 
+         cons_populism_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+cons_populism_3_table <- cons_populism_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(cons_populism_3_estimate = estimate, 
+         cons_populism_3_ci = ci)%>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+
+libs_populism_1_table <- libs_populism_1 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_populism_1_estimate = estimate, 
+         libs_populism_1_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$"))
+
+libs_populism_2_table <- libs_populism_2 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_populism_2_estimate = estimate, 
+         libs_populism_2_ci = ci) %>% 
+ bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$"))
+
+libs_populism_3_table <- libs_populism_3 %>% 
+  broom.mixed::tidy(conf.int = T) %>% 
+  select(rowname = term,
+         lower = conf.low,
+         est = estimate,
+         upper = conf.high,
+         p_value = p.value) %>% 
+  mutate(estimate = sprintf("%.3f", round(est, 3)), estimate = case_when(
+    p_value < 0.001 ~ paste0(estimate, "***"), 
+    p_value < 0.01 ~ paste0(estimate,"**"), 
+    p_value < 0.05 ~ paste0(estimate, "*"), 
+    T ~ estimate),
+    ci = paste0("[", sprintf("%.3f", round(lower, 3)), ", ",sprintf("%.3f", round(upper, 3)), "]")) %>% 
+  select(libs_populism_3_estimate = estimate, 
+         libs_populism_3_ci = ci) %>% 
+  bind_cols(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$"))
+```
+
+```{r}
+rand_effects <- tribble(~term, ~cons_populism_1_estimate, ~cons_populism_1_ci, ~cons_populism_2_estimate, ~cons_populism_2_ci, ~cons_populism_3_estimate, ~cons_populism_3_ci, ~libs_populism_1_estimate, ~libs_populism_1_ci, ~libs_populism_2_estimate, ~libs_populism_2_ci, ~libs_populism_3_estimate, ~libs_populism_3_ci,
+        "$std(u_{00i})$", "0.025", "[0.022, 0.030]", "0.025", "[0.021, 0.030]", "0.025", "[0.021, 0.030]",
+                          "0.031", "[0.027, 0.036]", "0.031", "[0.027, 0.036]", "0.031", "[0.027, 0.036]")
+```
+
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}DaysToDefeat$",
+                "$\\gamma_{11}DaysToDefeat*loser$",
+                "$\\gamma_{12}DaysToDefeat*female$",
+                "$\\gamma_{13}DaysToDefeat*female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}DefeatBinary$",
+                "$\\gamma_{21}DefeatBinary*loser$",
+                "$\\gamma_{22}DefeatBinary*female$",
+                "$\\gamma_{23}DefeatBinary*female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}DaysSinceDefeat$",
+                "$\\gamma_{31}DaysSinceDefeat*loser$",
+                "$\\gamma_{32}DaysSinceDefeat*female$",
+                "$\\gamma_{33}DaysSinceDefeat*female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_populism_1_table) %>% 
+  left_join(cons_populism_2_table) %>% 
+  left_join(cons_populism_3_table) %>% 
+  left_join(libs_populism_1_table) %>% 
+  left_join(libs_populism_2_table) %>% 
+  left_join(libs_populism_3_table) %>% 
+  mutate_all(replace_na, "") %>% 
+  bind_rows(rand_effects) %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI",
+                             "Model 1 Est.",
+                             "Model 1 CI",
+                             "Model 2 Est.",
+                             "Model 2 CI",
+                             "Model 3 Est.",
+                             "Model 3 CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Random Effects", 33, 33) %>%
+  kableExtra::add_header_above(c(" " = 1, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2, "Model 1" = 2, "Model 2" = 2, "Model 3" = 2)) %>% 
+  kableExtra::add_header_above(c(" " = 1, "Conservative" = 6, "Liberal" = 6)) 
+```
+
+```{r}
+libs_populism_3 %>% intervals
+```
+
+
+```{r}
+rand_effects <- tribble(~term, ~cons_flock_3_estimate, ~cons_flock_3_ci, ~cons_candidate_3_estimate, ~cons_candidate_3_ci, ~cons_populism_3_estimate, ~cons_populism_3_ci, ~libs_flock_3_estimate, ~libs_flock_3_ci, ~libs_candidate_3_estimate, ~libs_candidate_3_ci, ~libs_populism_3_estimate, ~libs_populism_3_ci,
+        "$std(u_{00i})$",  "0.077", "[.068, .087]", "0.090", "[0.080, 0.102]", "0.025", "[0.021, 0.029]",
+                           "0.083", "[.075, .092]", "0.039", "[0.034, 0.043]", "0.031", "[0.027, 0.036]")
+```
+
+
+```{r}
+tibble(term = c("$\\gamma_{00}$",
+                "$\\gamma_{01}loser$",
+                "$\\gamma_{02}female$",
+                "$\\gamma_{03}female*loser$",
+                "$\\gamma_{04}identity$",
+                "$\\gamma_{05}identity*loser$",
+                "$\\gamma_{06}identity*female$",
+                "$\\gamma_{07}identity*loser*female$",
+                "$\\gamma_{10}$",
+                "$\\gamma_{11}loser$",
+                "$\\gamma_{12}female$",
+                "$\\gamma_{13}female*loser$",
+                "$\\gamma_{14}identity$",
+                "$\\gamma_{15}identity*loser$",
+                "$\\gamma_{16}identity*female$",
+                "$\\gamma_{17}identity*loser*female$",
+                "$\\gamma_{20}$",
+                "$\\gamma_{21}loser$",
+                "$\\gamma_{22}female$",
+                "$\\gamma_{23}female*loser$",
+                "$\\gamma_{24}identity$",
+                "$\\gamma_{25}identity*loser$",
+                "$\\gamma_{26}identity*female$",
+                "$\\gamma_{27}identity*loser*female$",
+                "$\\gamma_{30}$",
+                "$\\gamma_{31}loser$",
+                "$\\gamma_{32}female$",
+                "$\\gamma_{33}female*loser$",
+                "$\\gamma_{34}identity$",
+                "$\\gamma_{35}identity*loser$",
+                "$\\gamma_{36}identity*female$",
+                "$\\gamma_{37}identity*loser*female$")) %>%
+  left_join(cons_flock_3_table) %>% 
+  left_join(libs_flock_3_table) %>% 
+  left_join(cons_candidate_3_table) %>% 
+  left_join(libs_candidate_3_table) %>% 
+  left_join(cons_populism_3_table) %>% 
+  left_join(libs_populism_3_table) %>% 
+  mutate_all(replace_na, "") %>% 
+  bind_rows(rand_effects) %>% 
+  kableExtra::kbl(caption = "Model Output",
+               col.names = c("term",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI",
+                             "Conservatives Est.",
+                             "Conservatives CI",
+                             "Liberals Est.",
+                             "Liberals CI"),
+               'latex', booktabs = T, escape = F) %>%
+  kableExtra::kable_styling(latex_options="scale_down") %>% 
+  kableExtra::pack_rows("Fixed Effects", 1, 32) %>%
+  kableExtra::pack_rows("Intercept (Baseline on Day of Defeat)", 1, 8, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysToDefeat (Gradual Leading up to Day of Defeat)", 9, 16, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DefeatBinary (Transformational Starting on Day of Defeat)", 17, 24, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("DaysSinceDefeat (Gradual Starting on Day of Defeat)", 25, 32, bold = F, italic = T) %>% 
+  kableExtra::pack_rows("Random Effects", 33, 33) %>% 
+  kableExtra::add_header_above(c(" " = 1, "Flock Amplification" = 4, "Candidate Interaction" = 4, "Populist Language" = 4)) 
+```

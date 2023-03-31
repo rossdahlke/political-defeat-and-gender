@@ -1,0 +1,577 @@
+---
+title: "Modeling"
+output: html_document
+author: "Ross Dahlke"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(nlme)
+options(scipen = 999999)
+```
+
+## Read in Data
+
+```{r}
+tweets_md <- read_rds("../data/tweets_md.rds") %>% 
+  ungroup() %>% 
+  filter(!is.na(gender) & gender != "NULL") %>% 
+  mutate(female = if_else(gender == "F", 1, 0))
+```
+
+```{r}
+tweets_bernie_model <- tweets_md %>% 
+  filter(model == "bernie")
+
+tweets_trump_model <- tweets_md %>% 
+  filter(model == "trump")
+```
+
+## Tweet Volume Model
+
+### Loser Model
+
+```{r}
+libs_volume_1 <- nlme(n ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_volume_1 <- nlme(n ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Gender Model
+
+```{r}
+libs_volume_2 <- nlme(n ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+
+```{r}
+cons_volume_2 <- nlme(n ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Identity Model
+
+```{r}
+libs_volume_3 <- nlme(n ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_volume_3 <- nlme(n ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+save(libs_volume_1, file = "../models/libs_volume_1")
+save(libs_volume_2, file = "../models/libs_volume_2")
+save(libs_volume_3, file = "../models/libs_volume_3")
+save(cons_volume_1, file = "../models/cons_volume_1")
+save(cons_volume_2, file = "../models/cons_volume_2")
+save(cons_volume_3, file = "../models/cons_volume_3")
+```
+
+## Candidate Amplification
+
+```{r}
+libs_candidate_1 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_candidate_1 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Gender Model
+
+```{r}
+libs_candidate_2 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+
+```{r}
+cons_candidate_2 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Identity Model
+
+```{r}
+libs_candidate_3 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_candidate_3 <- nlme(candidate_rt_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+save(libs_candidate_1, file = "../models/libs_candidate_1")
+save(libs_candidate_2, file = "../models/libs_candidate_2")
+save(libs_candidate_3, file = "../models/libs_candidate_3")
+save(cons_candidate_1, file = "../models/cons_candidate_1")
+save(cons_candidate_2, file = "../models/cons_candidate_2")
+save(cons_candidate_3, file = "../models/cons_candidate_3")
+```
+
+## Flock Amplification
+
+```{r}
+libs_flock_1 <- nlme(flock_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_flock_1 <- nlme(flock_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Gender Model
+
+```{r}
+libs_flock_2 <- nlme(flock_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+
+```{r}
+cons_flock_2 <- nlme(flock_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Identity Model
+
+```{r}
+libs_flock_3 <- nlme(flock_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_flock_3 <- nlme(flock_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+save(libs_flock_1, file = "../models/libs_flock_1")
+save(libs_flock_2, file = "../models/libs_flock_2")
+save(libs_flock_3, file = "../models/libs_flock_3")
+save(cons_flock_1, file = "../models/cons_flock_1")
+save(cons_flock_2, file = "../models/cons_flock_2")
+save(cons_flock_3, file = "../models/cons_flock_3")
+```
+
+## Populist Language
+
+```{r}
+libs_populism_1 <- nlme(populism_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_populism_1 <- nlme(populism_per ~ (beta_00 + beta_01*loser) + 
+                          (beta_10 + beta_11*loser)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser)*post_defeat_day + 
+                          (beta_30 + beta_31*loser)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + 
+                              beta_10 + beta_11 +  
+                              beta_20 + beta_21 + 
+                              beta_30 + beta_31~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, 
+                                beta_10 = -5, beta_11 = 0, 
+                                beta_20 = 0, beta_21 = 0, 
+                                beta_30 = 0, beta_31 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Gender Model
+
+```{r}
+libs_populism_2 <- nlme(populism_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+
+```{r}
+cons_populism_2 <- nlme(populism_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 +
+                              beta_10 + beta_11 + beta_12 + beta_13 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + 
+                              beta_30 + beta_31 + beta_32 + beta_33 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+### Identity Model
+
+```{r}
+libs_populism_3 <- nlme(populism_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_bernie_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+cons_populism_3 <- nlme(populism_per ~ (beta_00 + beta_01*loser + beta_02*female + beta_03*loser*female + beta_04*bio_identity + beta_05*bio_identity*loser + beta_06*bio_identity*female + beta_07*bio_identity*loser*female) +
+                          (beta_10 + beta_11*loser + beta_12*female + beta_13*loser*female + beta_14*bio_identity + beta_15*bio_identity*loser + beta_16*bio_identity*female + beta_17*bio_identity*loser*female)*pre_defeat_day_n + 
+                          (beta_20 + beta_21*loser + beta_22*female + beta_23*loser*female + beta_24*bio_identity + beta_25*bio_identity*loser + beta_26*bio_identity*female + beta_27*bio_identity*loser*female)*post_defeat_day + 
+                          (beta_30 + beta_31*loser + beta_32*female + beta_33*loser*female + beta_34*bio_identity + beta_35*bio_identity*loser + beta_36*bio_identity*female + beta_37*bio_identity*loser*female)*post_defeat_day_n,
+                      data = tweets_trump_model,
+                      fixed = beta_00 + beta_01 + beta_02 + beta_03 + beta_04 + beta_05 + beta_06 + beta_07 +
+                              beta_10 + beta_11 + beta_12 + beta_13 + beta_14 + beta_15 + beta_16 + beta_17 +
+                              beta_20 + beta_21 + beta_22 + beta_23 + beta_24 + beta_25 + beta_26 + beta_27 +
+                              beta_30 + beta_31 + beta_32 + beta_33 + beta_34 + beta_35 + beta_36 + beta_37 ~ 1,
+                      random = beta_00 ~ 1,
+                      group = ~screen_name,
+                      start = c(beta_00 = 50, beta_01 = .01, beta_02 = 0, beta_03 = 0, beta_04 = 0, beta_05 = 0, beta_06 = 0, beta_07 = 0,
+                                beta_10 = -5, beta_11 = 0, beta_12 = 0, beta_13 = 0, beta_14 = 0, beta_15 = 0, beta_16 = 0, beta_17 = 0,
+                                beta_20 = 0, beta_21 = 0, beta_22 = 0, beta_23 = 0, beta_24 = 0, beta_25 = 0, beta_26 = 0, beta_27 = 0,
+                                beta_30 = 0, beta_31 = 0, beta_32 = 0, beta_33 = 0, beta_34 = 0, beta_35 = 0, beta_36 = 0, beta_37 = 0),
+                      control=c(msMaxIter=10000, msVerbose = T, maxIter = 10000, pnlsMaxIter = 10),
+                      na.action = na.exclude)
+```
+
+```{r}
+save(libs_populism_1, file = "../models/libs_populism_1")
+save(libs_populism_2, file = "../models/libs_populism_2")
+save(libs_populism_3, file = "../models/libs_populism_3")
+save(cons_populism_1, file = "../models/cons_populism_1")
+save(cons_populism_2, file = "../models/cons_populism_2")
+save(cons_populism_3, file = "../models/cons_populism_3")
+```
+

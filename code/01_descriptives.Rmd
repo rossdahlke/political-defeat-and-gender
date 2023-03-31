@@ -1,0 +1,135 @@
+---
+title: "Modeling"
+output: 
+  pdf_document:
+      #code_folding: hide
+author: "Ross Dahlke"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, warning = F, message = F)
+library(tidyverse)
+library(nlme)
+options(scipen = 999999)
+```
+
+```{r}
+tweets_md <- read_rds("../data/tweets_md.rds") %>% 
+  ungroup() %>% 
+  filter(!is.na(gender) & gender != "NULL") %>% 
+  mutate(female = if_else(gender == "F", 1, 0))
+```
+
+# People in each Moel
+
+```{r}
+tweets_md %>% 
+  distinct(model, screen_name) %>% 
+  count(model)
+```
+
+
+# Gender distribution
+
+```{r}
+tweets_md %>% 
+  distinct(screen_name, flock_label, female) %>% 
+  count(flock_label, female) %>% 
+  group_by(flock_label) %>% 
+  mutate(per = n / sum(n))
+```
+
+# Identity distribution
+
+```{r}
+tweets_md %>% 
+  distinct(screen_name, flock_label, bio_identity) %>% 
+  count(bio_identity) %>%
+  mutate(per = n / sum(n))
+```
+
+# Number of tweets
+
+```{r}
+tweets_md %>% 
+  group_by(flock_label) %>% 
+  summarize(n = sum(n))
+```
+
+# Number of tweets
+
+```{r}
+tweets_md %>% 
+ # group_by(flock_label) %>% 
+  summarize(mean = mean(n, na.rm = T),
+            sd = sd(n, na.rm = T))
+```
+
+
+# Flock amplification
+
+```{r}
+tweets_md %>% 
+  group_by(flock_label) %>% 
+  summarize(mean = mean(flock_per, na.rm = T),
+            sd = sd(flock_per, na.rm = T))
+```
+
+# Candidate interaction
+
+```{r}
+tweets_md %>% 
+  group_by(flock_label) %>% 
+  summarize(mean = mean(candidate_rt_per, na.rm = T),
+            sd = sd(candidate_rt_per, na.rm = T))
+```
+
+# Populist language
+
+```{r}
+tweets_md %>% 
+  group_by(flock_label) %>% 
+  summarize(mean = mean(populism_per, na.rm = T),
+            sd = sd(populism_per, na.rm = T))
+```
+
+
+# Supplemental
+
+```{r}
+coded_profiles <- read_rds("../data/coded_profiles_supplemental.rds") 
+```
+
+
+## followers_count
+
+```{r}
+t.test(coded_profiles %>% filter(gender_labeled == 1) %>% pull(followers_count),
+       coded_profiles %>% filter(gender_labeled == 0) %>% pull(followers_count)) %>% 
+  broom::tidy()
+```
+
+## friends_count
+
+```{r}
+t.test(coded_profiles %>% filter(gender_labeled == 1) %>% pull(friends_count),
+       coded_profiles %>% filter(gender_labeled == 0) %>% pull(friends_count)) %>% 
+  broom::tidy()
+```
+
+## statuses_count
+
+```{r}
+t.test(coded_profiles %>% filter(gender_labeled == 1) %>% pull(statuses_count),
+       coded_profiles %>% filter(gender_labeled == 0) %>% pull(statuses_count)) %>% 
+  broom::tidy()
+```
+
+## favourites_count
+
+```{r}
+t.test(coded_profiles %>% filter(gender_labeled == 1) %>% pull(favourites_count),
+       coded_profiles %>% filter(gender_labeled == 0) %>% pull(favourites_count)) %>% 
+  broom::tidy()
+```
